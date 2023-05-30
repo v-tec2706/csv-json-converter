@@ -2,12 +2,12 @@ package service
 
 import io.circe.syntax.EncoderOps
 import model._
-import repository.TaskRepository
+import repository.{ResultStorage, TaskRepository}
 import zio.http.{Body, Client}
 import zio.stream.{ZPipeline, ZSink, ZStream}
 import zio.{Queue, ZIO}
 
-class TaskExecutor(activeTasks: Queue[Task], taskRepository: TaskRepository, outputPath: String) {
+class TaskExecutor(activeTasks: Queue[Task], taskRepository: TaskRepository, resultStorage: ResultStorage) {
   private val delimiter = ","
 
   def run: ZIO[Client, Throwable, Unit] = (for {
@@ -30,8 +30,7 @@ class TaskExecutor(activeTasks: Queue[Task], taskRepository: TaskRepository, out
 
   private def processFile(task: Task, body: Body): ZIO[Any, Throwable, Task] = {
     val input = body.asStream.via(ZPipeline.utf8Decode >>> ZPipeline.splitLines)
-    val path = s"$outputPath/result-${task.taskId.id}.json"
-    val fileSink = ZSink.fromFileName(path).contramapChunks[String](_.flatMap(_.getBytes))
+    val (fileSink, storagePath) = resultStorage.storageFile(task.taskId)
 
     input.mapAccum(Option.empty[List[String]]) {
       case (header, line) => header match {
@@ -42,6 +41,6 @@ class TaskExecutor(activeTasks: Queue[Task], taskRepository: TaskRepository, out
       .map(_.asJson.spaces2)
       .intersperse("[", ",", "]")
       .run(fileSink)
-      .as(task.copy(resultPath = Some(new Path(path))))
+      .as(task.copy(resultPath = Some(storagePath)))
   }
 }

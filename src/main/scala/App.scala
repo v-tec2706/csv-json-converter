@@ -1,17 +1,15 @@
+import common.Mapper.{ResponseFromZIO, requestToTask, requestToTaskId}
+import common.NotFoundError
 import io.circe.generic.auto._
 import io.circe.syntax.EncoderOps
 import model.{Running, TaskId}
-import repository.InMemoryTaskRepository
+import repository.{InMemoryTaskRepository, LocalResultStorage}
 import service.{TaskExecutor, TaskService}
-import common.Mapper.{ResponseFromZIO, requestToTask, requestToTaskId}
-import common.NotFoundError
 import zio._
 import zio.http.ChannelEvent.UserEvent.HandshakeComplete
 import zio.http.ChannelEvent.UserEventTriggered
 import zio.http._
 import zio.http.socket.{WebSocketChannelEvent, WebSocketFrame}
-
-import java.io.File
 
 object App extends ZIOAppDefault {
 
@@ -30,7 +28,7 @@ object App extends ZIOAppDefault {
       case req @ Method.POST -> !! / "task" => requestToTask(req).flatMap(taskService.schedule).toResponse
       case Method.GET -> !! / "task" / id => socket(taskService, requestToTaskId(id)).toSocketApp.toResponse
     } ++ Http.collectHttp[Request] {
-      case Method.GET -> !! / "result" / id => Http.fromFile(new File(s"data/result-$id.json"))
+      case Method.GET -> !! / "result" / id => Http.fromFile(taskService.getTaskResult(requestToTaskId(id)))
     }
   }.catchAllZIO(e => ZIO.succeed(Response.text(e.getMessage).withStatus(Status.BadRequest)))
 
@@ -39,8 +37,9 @@ object App extends ZIOAppDefault {
     queue <- Queue.unbounded[model.Task]
     tasks <- Ref.make(Map.empty[TaskId, model.Task])
     taskRepository = new InMemoryTaskRepository(tasks)
-    _ <- new TaskExecutor(queue, taskRepository, "data").run.provide(ZClient.default).fork
-    taskService = new TaskService(queue, taskRepository)
+    resultStorage = new LocalResultStorage(config)
+    _ <- new TaskExecutor(queue, taskRepository, resultStorage).run.provide(ZClient.default).fork
+    taskService = new TaskService(queue, taskRepository, resultStorage)
   } yield taskService
 
   override val run = setup.flatMap(taskService => Server.serve(app(taskService)).provide(Server.default))

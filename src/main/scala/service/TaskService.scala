@@ -1,14 +1,17 @@
 package service
 
 import model.{Cancelled, Task, TaskId}
-import repository.TaskRepository
+import repository.{ResultStorage, TaskRepository}
 import zio.{Queue, ZIO}
 
-class TaskService(queue: Queue[Task], tasksRepository: TaskRepository) {
+import java.io.File
+
+class TaskService(queue: Queue[Task], tasksRepository: TaskRepository, resultStorage: ResultStorage) {
 
   def get(taskId: TaskId): ZIO[Any, Throwable, Option[Task]] = tasksRepository.get(taskId)
   def getAll: ZIO[Any, Throwable, List[Task]] = tasksRepository.getAll
   def schedule(task: Task): ZIO[Any, Throwable, TaskId] = tasksRepository.add(task) *> queue.offer(task).as(task.taskId)
   def cancel(taskId: TaskId): ZIO[Any, Throwable, Task] =
     tasksRepository.getOrFail(taskId).flatMap(task => tasksRepository.update(task.copy(taskState = Cancelled)))
+  def getTaskResult(taskId: TaskId): File = resultStorage.getTaskResult(taskId)
 }
