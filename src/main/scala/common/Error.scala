@@ -1,4 +1,4 @@
-package model
+package common
 
 sealed trait Error extends Throwable {
   def message: String

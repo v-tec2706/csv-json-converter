@@ -1,6 +1,7 @@
 package repository
 
-import model.{NotFoundError, Task, TaskId}
+import common.NotFoundError
+import model.{Task, TaskId}
 import zio.ZIO
 
 trait TaskRepository {

@@ -1,8 +1,8 @@
-package util
+package common
 
 import io.circe.syntax.EncoderOps
 import io.circe.{Encoder, parser}
-import model.{InvalidInput, Task, TaskId}
+import model.{Task, TaskId}
 import zio.ZIO
 import zio.http.{Request, Response}
 

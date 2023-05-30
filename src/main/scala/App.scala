@@ -1,9 +1,10 @@
 import io.circe.generic.auto._
 import io.circe.syntax.EncoderOps
-import model.{NotFoundError, Running, TaskId}
+import model.{Running, TaskId}
 import repository.InMemoryTaskRepository
 import service.{TaskExecutor, TaskService}
-import util.Mapper.{ResponseFromZIO, requestToTask, requestToTaskId}
+import common.Mapper.{ResponseFromZIO, requestToTask, requestToTaskId}
+import common.NotFoundError
 import zio._
 import zio.http.ChannelEvent.UserEvent.HandshakeComplete
 import zio.http.ChannelEvent.UserEventTriggered
@@ -33,7 +34,8 @@ object App extends ZIOAppDefault {
     }
   }.catchAllZIO(e => ZIO.succeed(Response.text(e.getMessage).withStatus(Status.BadRequest)))
 
-  private val setup: ZIO[Any, Nothing, TaskService] = for {
+  private val setup: ZIO[Any, Throwable, TaskService] = for {
+    config <- config.ConfigProvider.default.config
     queue <- Queue.unbounded[model.Task]
     tasks <- Ref.make(Map.empty[TaskId, model.Task])
     taskRepository = new InMemoryTaskRepository(tasks)
