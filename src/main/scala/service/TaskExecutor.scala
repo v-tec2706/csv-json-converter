@@ -42,6 +42,6 @@ class TaskExecutor(activeTasks: Queue[Task], taskRepository: TaskRepository, out
       .map(_.asJson.spaces2)
       .intersperse("[", ",", "]")
       .run(fileSink)
-      .as(task.copy(resultPath = Some(Path(path))))
+      .as(task.copy(resultPath = Some(new Path(path))))
   }
 }

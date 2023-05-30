@@ -2,9 +2,9 @@ package model
 
 import java.util.UUID
 
-case class TaskId(id: UUID) extends AnyVal
-case class Url(url: String) extends AnyVal
-case class Path(path: String) extends AnyVal
+class TaskId(val id: UUID) extends AnyVal
+class Url(val url: String) extends AnyVal
+class Path(val path: String) extends AnyVal
 
 sealed trait TaskState
 case object Scheduled extends TaskState
@@ -15,6 +15,6 @@ case object Cancelled extends TaskState
 
 case class Task(taskId: TaskId, sourceUrl: Url, taskState: TaskState, resultPath: Option[Path])
 object Task {
-  def fromFilePath(filePath: String): Task = Task(TaskId(UUID.randomUUID()), Url(filePath), Scheduled, None)
+  def fromFilePath(filePath: String): Task = Task(new TaskId(UUID.randomUUID()), new Url(filePath), Scheduled, None)
 }
 
