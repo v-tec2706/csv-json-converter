@@ -1,4 +1,4 @@
-import common.Mapper.{ResponseFromZIO, requestToTask, requestToTaskId}
+import common.Mapper.{ResponseFromZIO, errorToResponse, requestToTask, requestToTaskId}
 import common.NotFoundError
 import io.circe.generic.auto._
 import io.circe.syntax.EncoderOps
@@ -13,24 +13,25 @@ import zio.http.socket.{WebSocketChannelEvent, WebSocketFrame}
 
 object App extends ZIOAppDefault {
 
-  private def socket(taskService: TaskService, id: TaskId): Http[Any, Throwable, WebSocketChannelEvent, AnyVal] = Http.collectZIO[WebSocketChannelEvent] {
-    case ChannelEvent(channel, UserEventTriggered(HandshakeComplete)) =>
-      val task = taskService.get(id).someOrFail(NotFoundError)
-      task.flatMap(t => channel.writeAndFlush(WebSocketFrame.text(t.asJson.noSpaces)))
-        .repeatUntilZIO(_ => task.fold(_ => false, _.taskState == Running))
-        .schedule(Schedule.fixed(2.minutes))
-  }
+  private def socket(taskService: TaskService, id: TaskId): Http[Any, Throwable, WebSocketChannelEvent, AnyVal] =
+    Http.collectZIO[WebSocketChannelEvent] {
+      case ChannelEvent(channel, UserEventTriggered(HandshakeComplete)) =>
+        val task = taskService.get(id).someOrFail(NotFoundError)
+        task.flatMap(t => channel.writeAndFlush(WebSocketFrame.text(t.asJson.noSpaces)))
+          .repeatUntilZIO(_ => task.fold(_ => false, _.taskState == Running))
+          .schedule(Schedule.fixed(2.minutes))
+    }
 
   private def app(taskService: TaskService): App[Any] = {
     Http.collectZIO[Request] {
       case Method.GET -> !! / "tasks" => taskService.getAll.toResponse
       case Method.DELETE -> !! / "task" / id => taskService.cancel(requestToTaskId(id)).toResponse
-      case req @ Method.POST -> !! / "task" => requestToTask(req).flatMap(taskService.schedule).toResponse
+      case req@Method.POST -> !! / "task" => requestToTask(req).flatMap(taskService.schedule).toResponse
       case Method.GET -> !! / "task" / id => socket(taskService, requestToTaskId(id)).toSocketApp.toResponse
     } ++ Http.collectHttp[Request] {
       case Method.GET -> !! / "result" / id => Http.fromFile(taskService.getTaskResult(requestToTaskId(id)))
     }
-  }.catchAllZIO(e => ZIO.succeed(Response.text(e.getMessage).withStatus(Status.BadRequest)))
+  }.catchAllZIO(errorToResponse)
 
   private val setup: ZIO[Any, Throwable, TaskService] = for {
     config <- config.ConfigProvider.default.config
