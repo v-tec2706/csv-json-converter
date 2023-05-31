@@ -13,8 +13,8 @@ case object Done extends TaskState
 case object Failed extends TaskState
 case object Cancelled extends TaskState
 
-case class Task(taskId: TaskId, sourceUrl: Url, taskState: TaskState, resultPath: Option[Path])
+case class Task(taskId: TaskId, sourceUrl: Url, taskState: TaskState)
 object Task {
-  def fromFilePath(filePath: String): Task = Task(new TaskId(UUID.randomUUID()), new Url(filePath), Scheduled, None)
+  def fromFilePath(filePath: String): Task = Task(new TaskId(UUID.randomUUID()), new Url(filePath), Scheduled)
 }
 

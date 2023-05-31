@@ -16,7 +16,7 @@ object Mapper {
 
   def requestToTaskId(request: String): TaskId = new TaskId(UUID.fromString(request))
 
-  def errorToResponse(error: Throwable): ZIO[Any, Response, _] =
+  def errorToResponse(error: Throwable): ZIO[Any, Response, Response] =
     ZIO.succeed {
       error match {
         case error: NotFoundError.type => Response.text(error.message).withStatus(Status.NotFound)

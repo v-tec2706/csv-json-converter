@@ -9,6 +9,6 @@ trait ConfigProvider {
 object ConfigProvider {
   def default: ConfigProvider = new ConfigProvider {
     override def config: ZIO[Any, Throwable, Config] =
-      ZIO.succeed(Config(host = "http://localhost", fileStoragePath = "data"))
+      ZIO.succeed(Config(host = "http://localhost", fileStoragePath = "data", csvDelimiter = ","))
   }
 }

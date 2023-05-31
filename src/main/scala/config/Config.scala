@@ -1,3 +1,3 @@
 package config
 
-case class Config(host: String, fileStoragePath: String)
+case class Config(host: String, fileStoragePath: String, csvDelimiter: String)

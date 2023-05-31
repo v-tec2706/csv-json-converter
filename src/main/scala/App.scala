@@ -26,7 +26,7 @@ object App extends ZIOAppDefault {
     Http.collectZIO[Request] {
       case Method.GET -> !! / "tasks" => taskService.getAll.toResponse
       case Method.DELETE -> !! / "task" / id => taskService.cancel(requestToTaskId(id)).toResponse
-      case req@Method.POST -> !! / "task" => requestToTask(req).flatMap(taskService.schedule).toResponse
+      case req @ Method.POST -> !! / "task" => requestToTask(req).flatMap(taskService.schedule).toResponse
       case Method.GET -> !! / "task" / id => socket(taskService, requestToTaskId(id)).toSocketApp.toResponse
     } ++ Http.collectHttp[Request] {
       case Method.GET -> !! / "result" / id => Http.fromFile(taskService.getTaskResult(requestToTaskId(id)))
@@ -39,7 +39,7 @@ object App extends ZIOAppDefault {
     tasks <- Ref.make(Map.empty[TaskId, model.Task])
     taskRepository = new InMemoryTaskRepository(tasks)
     resultStorage = new LocalResultStorage(config)
-    _ <- new TaskExecutor(queue, taskRepository, resultStorage).run.provide(ZClient.default).fork
+    _ <- new TaskExecutor(queue, taskRepository, resultStorage, config).run.provide(ZClient.default).fork
     taskService = new TaskService(queue, taskRepository, resultStorage)
   } yield taskService
 
