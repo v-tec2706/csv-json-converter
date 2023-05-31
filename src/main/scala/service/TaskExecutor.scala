@@ -25,7 +25,6 @@ class TaskExecutor(activeTasks: Queue[Task], taskRepository: TaskRepository, res
       _ <- taskRepository.update(result.copy(taskState = Done))
     } yield ())
       .whenZIO(taskRepository.getOrFail(task.taskId).map(_.taskState == Scheduled))
-      .tapError(e => ZIO.succeed(println(e.getMessage)))
       .orElse(taskRepository.update(task.copy(taskState = Failed)))
   }
 
@@ -40,7 +39,7 @@ class TaskExecutor(activeTasks: Queue[Task], taskRepository: TaskRepository, res
     }.collectSome.map(_.toMap)
       .map(_.asJson.spaces2)
       .intersperse("[", ",", "]")
-      .run(resultStorage.storageFile(task.taskId))
+      .run(resultStorage.saveFile(task.taskId))
       .as(task)
   }
 }
